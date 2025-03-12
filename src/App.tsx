@@ -6,7 +6,7 @@ function App() {
   return (
     <div className="App">
       <header className="App-header">
-        <h1>Linear Chart Example</h1>
+        <h1>Linear Chart</h1>
         <LinearChart />
       </header>
     </div>
