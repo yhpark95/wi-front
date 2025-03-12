@@ -1,9 +1,7 @@
 "use client"
 
-import { useEffect, useState } from "react";
-import axios from "axios";
-import { X } from "lucide-react";
 import { CartesianGrid, Line, LineChart, XAxis } from "recharts";
+import { X } from "lucide-react";
 
 import {
   Card,
@@ -26,66 +24,107 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Badge } from "@/components/ui/badge";
-import { ScrollArea } from "@/components/ui/scroll-area";
 
 // Define TypeScript interface
 interface ImportData {
-    id: number;
-    date: string;
-    year: number;
-    month: number;
-    supplier: string;
-    importer: string;
-    origin: string;
-    export: string;
-    product_description: string;
-    manufacturer: string;
-    total_value_usd: number;
-    quantity: number;
-    quantity_unit: string;
-    price: number;
-    price_unit: string;
-    incoterm: string;
-    hs_code: number;
-    destination: string;
-    importer_code: string;
-    port: string;
+  id: number;
+  date: string;
+  year: number;
+  month: number;
+  supplier: string;
+  importer: string;
+  origin: string;
+  export: string;
+  product_description: string;
+  manufacturer: string;
+  total_value_usd: number;
+  quantity: number;
+  quantity_unit: string;
+  price: number;
+  price_unit: string;
+  incoterm: string;
+  hs_code: number;
+  destination: string;
+  importer_code: string;
+  port: string;
+  product: string;
+  insert_date: string;
+}
+
+interface LineChartProps {
+  data: ImportData[];
+  filters: {
     product: string;
-    insert_date: string;
-  }
+    importers: string[];
+    destination: string;
+    year: number;
+  };
+  onFilterChange: (filterType: "product" | "destination" | "year" | "importers", value: any) => void;
+  uniqueProducts: string[];
+  uniqueImporters: string[];
+  uniqueDestinations: string[];
+  uniqueYears: number[];
+  showFilters?: boolean;
+  showChart?: boolean;
+}
 
 // Aggregates data by month with optional filters
 const aggregateDataByMonth = (
   data: ImportData[],
   filters: { product?: string; importers?: string[]; destination?: string; year?: number }
 ) => {
+  console.log("Aggregating data with filters:", filters);
+  
   // Apply non-importer filters first
   let filteredData = data.filter((item) => {
-    return (
-      (!filters.product || item.product === filters.product) &&
-      (!filters.destination || item.destination === filters.destination) &&
-      (!filters.year || item.year === filters.year)
-    );
+    const productMatch = (filters.product === "all" || item.product === filters.product);
+    const destinationMatch = (filters.destination === "all" || item.destination === filters.destination);
+    const yearMatch = (filters.year === 0 || item.year === filters.year);
+    return productMatch && destinationMatch && yearMatch;
+  });
+  
+  console.log("After initial filtering:", {
+    originalLength: data.length,
+    filteredLength: filteredData.length,
+    sampleItem: filteredData[0],
+    filters: {
+      product: filters.product,
+      destination: filters.destination,
+      year: filters.year
+    }
   });
 
   // If no importers selected, aggregate all together
   if (!filters.importers || filters.importers.length === 0) {
-    const monthlyData: { [key: string]: { month: string; total: number } } = {};
+    const monthlyData: { [key: string]: { month: string; total_value: number; total_quantity: number } } = {};
     
     filteredData.forEach((item) => {
       const monthKey = `${item.year}-${String(item.month).padStart(2, "0")}`;
       if (!monthlyData[monthKey]) {
-        monthlyData[monthKey] = { month: monthKey, total: 0 };
+        monthlyData[monthKey] = { month: monthKey, total_value: 0, total_quantity: 0 };
       }
-      monthlyData[monthKey].total += item.total_value_usd;
+      monthlyData[monthKey].total_value += item.total_value_usd;
+      monthlyData[monthKey].total_quantity += item.quantity;
     });
 
-    return Object.values(monthlyData).sort((a, b) => a.month.localeCompare(b.month));
+    const result = Object.values(monthlyData)
+      .map(({ month, total_value, total_quantity }) => ({
+        month,
+        total: total_quantity > 0 ? total_value / total_quantity : 0
+      }))
+      .sort((a, b) => a.month.localeCompare(b.month));
+
+    console.log("Aggregated data:", {
+      monthKeys: Object.keys(monthlyData),
+      resultLength: result.length,
+      sampleResult: result[0]
+    });
+
+    return result;
   }
 
   // Aggregate data by importer
-  const monthlyDataByImporter: { [key: string]: { [month: string]: number } } = {};
+  const monthlyDataByImporter: { [key: string]: { [month: string]: { value: number; quantity: number } } } = {};
   const months = new Set<string>();
 
   filteredData.forEach((item) => {
@@ -97,156 +136,50 @@ const aggregateDataByMonth = (
         monthlyDataByImporter[item.importer] = {};
       }
       if (!monthlyDataByImporter[item.importer][monthKey]) {
-        monthlyDataByImporter[item.importer][monthKey] = 0;
+        monthlyDataByImporter[item.importer][monthKey] = { value: 0, quantity: 0 };
       }
-      monthlyDataByImporter[item.importer][monthKey] += item.total_value_usd;
+      monthlyDataByImporter[item.importer][monthKey].value += item.total_value_usd;
+      monthlyDataByImporter[item.importer][monthKey].quantity += item.quantity;
     }
   });
 
-  // Convert to chart format
+  // Convert to chart format with average price per ton
   const sortedMonths = Array.from(months).sort();
   return sortedMonths.map(month => {
     const dataPoint: { [key: string]: any } = { month };
     filters.importers?.forEach(importer => {
-      dataPoint[importer] = monthlyDataByImporter[importer]?.[month] || 0;
+      const monthData = monthlyDataByImporter[importer]?.[month];
+      dataPoint[importer] = monthData?.quantity > 0 
+        ? monthData.value / monthData.quantity 
+        : 0;
     });
     return dataPoint;
   });
 };
 
-export function Component() {
-  const [originalData, setOriginalData] = useState<ImportData[]>([]);
-  const [chartData, setChartData] = useState<any[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
-  const [error, setError] = useState<string | null>(null);
-  const [filters, setFilters] = useState({
-    product: "all",
-    importers: [] as string[],
-    destination: "all",
-    year: 0
+export function PriceLineChart({ 
+  data, 
+  filters, 
+  onFilterChange,
+  uniqueProducts,
+  uniqueImporters,
+  uniqueDestinations,
+  uniqueYears,
+  showFilters = true,
+  showChart = true
+}: LineChartProps) {
+  const chartData = aggregateDataByMonth(data, filters);
+  console.log("Line Chart Data:", {
+    rawDataLength: data.length,
+    transformedData: chartData,
+    firstFewItems: chartData.slice(0, 3)
   });
-
-  // Function to get filtered data based on current filters
-  const getFilteredData = (data: ImportData[], currentFilters: typeof filters) => {
-    return data.filter((item) => {
-      const productMatch = currentFilters.product === "all" || item.product === currentFilters.product;
-      const importerMatch = currentFilters.importers.length === 0 || currentFilters.importers.includes(item.importer);
-      const destinationMatch = currentFilters.destination === "all" || item.destination === currentFilters.destination;
-      const yearMatch = currentFilters.year === 0 || item.year === currentFilters.year;
-      return productMatch && importerMatch && destinationMatch && yearMatch;
-    });
-  };
-
-  // Function to get filtered unique values based on current filters
-  const getFilteredUniqueValues = (
-    data: ImportData[],
-    field: keyof ImportData,
-    currentFilters: typeof filters,
-    excludeField?: keyof typeof filters
-  ) => {
-    // Create a new filters object excluding the field we're getting values for
-    const filtersWithoutField = { ...currentFilters };
-    if (excludeField) {
-      if (excludeField === 'importers') {
-        filtersWithoutField.importers = [];
-      } else if (excludeField === 'year') {
-        filtersWithoutField.year = 0;
-      } else {
-        (filtersWithoutField[excludeField] as string) = "all";
-      }
-    }
-
-    // Get filtered data
-    const filteredData = getFilteredData(data, filtersWithoutField);
-    
-    // Extract unique values
-    const values = Array.from(new Set(filteredData.map(item => item[field]))).sort();
-    return values;
-  };
-
-  // Get filtered unique values for each filter
-  const uniqueProducts = getFilteredUniqueValues(originalData, 'product', filters, 'product') as string[];
-  const uniqueImporters = getFilteredUniqueValues(originalData, 'importer', filters, 'importers') as string[];
-  const uniqueDestinations = getFilteredUniqueValues(originalData, 'destination', filters, 'destination') as string[];
-  const uniqueYears = getFilteredUniqueValues(originalData, 'year', filters, 'year') as number[];
-
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const response = await axios.get<ImportData[]>("http://localhost:5555/api/v1/excel/get_data");
-        setOriginalData(response.data);
-        setChartData(aggregateDataByMonth(response.data, {}));
-      } catch (err) {
-        setError("Failed to fetch data");
-        console.error(err);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchData();
-  }, []);
-
-  // Update chart data when filters change
-  useEffect(() => {
-    const activeFilters = {
-      ...(filters.product !== "all" && { product: filters.product }),
-      ...(filters.importers.length > 0 && { importers: filters.importers }),
-      ...(filters.destination !== "all" && { destination: filters.destination }),
-      ...(filters.year !== 0 && { year: filters.year }),
-    };
-    setChartData(aggregateDataByMonth(originalData, activeFilters));
-
-    // Validate current filter values against new options
-    const validateFilters = () => {
-      const newFilters = { ...filters };
-      let hasChanges = false;
-
-      // Validate product
-      if (filters.product !== "all" && !uniqueProducts.includes(filters.product)) {
-        newFilters.product = "all";
-        hasChanges = true;
-      }
-
-      // Validate importers
-      const validImporters = filters.importers.filter(imp => uniqueImporters.includes(imp));
-      if (validImporters.length !== filters.importers.length) {
-        newFilters.importers = validImporters;
-        hasChanges = true;
-      }
-
-      // Validate destination
-      if (filters.destination !== "all" && !uniqueDestinations.includes(filters.destination)) {
-        newFilters.destination = "all";
-        hasChanges = true;
-      }
-
-      // Validate year
-      if (filters.year !== 0 && !uniqueYears.includes(filters.year)) {
-        newFilters.year = 0;
-        hasChanges = true;
-      }
-
-      if (hasChanges) {
-        setFilters(newFilters);
-      }
-    };
-
-    validateFilters();
-  }, [filters, originalData]);
-
-  const handleFilterChange = (filterType: keyof typeof filters, value: any) => {
-    setFilters(prev => ({
-      ...prev,
-      [filterType]: value
-    }));
-  };
 
   // Generate chart config based on selected importers
   const chartConfig = {
     ...(filters.importers.length === 0 ? {
       total: {
-        label: "Total Value (USD)",
+        label: "Avg Price Per Ton (USD)",
         color: "#2563eb",
       }
     } : filters.importers.reduce((acc, importer, index) => {
@@ -259,168 +192,189 @@ export function Component() {
     }, {} as ChartConfig))
   } satisfies ChartConfig;
 
-  if (loading) return <div>Loading...</div>;
-  if (error) return <div className="text-red-500">{error}</div>;
-
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Line Chart</CardTitle>
-        <CardDescription>Monthly Import Data</CardDescription>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4">
-          <Select value={filters.product} onValueChange={(value) => handleFilterChange("product", value)}>
-            <SelectTrigger className="w-full">
-              <SelectValue placeholder="All Products" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Products</SelectItem>
-              {uniqueProducts.map((product) => (
-                <SelectItem key={product} value={product}>
-                  {product}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-
-          <div className="space-y-2">
-            <Select
-              value={filters.importers.length > 0 ? filters.importers[0] : "all"}
-              onValueChange={(value) => {
-                if (value === "all") {
-                  handleFilterChange("importers", []);
-                } else {
-                  const newImporters = filters.importers.includes(value)
-                    ? filters.importers.filter(i => i !== value)
-                    : [...filters.importers, value];
-                  handleFilterChange("importers", newImporters);
-                }
-              }}
-            >
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder="Select Importers">
-                  {filters.importers.length > 0 ? `${filters.importers.length} selected` : "All Importers"}
-                </SelectValue>
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Importers</SelectItem>
-                {uniqueImporters.map((importer) => (
-                  <SelectItem key={importer} value={importer}>
-                    <div className="flex items-center gap-2">
-                      <div className={`w-3 h-3 ${filters.importers.includes(importer) ? "bg-primary" : "bg-muted"} rounded-full`} />
-                      {importer}
-                    </div>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            {filters.importers.length > 0 && (
-              <div className="flex flex-wrap gap-1">
-                {filters.importers.map((importer) => (
-                  <div
-                    key={importer}
-                    className="flex items-center gap-1 px-2 py-1 text-sm bg-secondary text-secondary-foreground rounded-md cursor-pointer hover:bg-secondary/80"
-                    onClick={() => {
-                      handleFilterChange(
-                        "importers",
-                        filters.importers.filter((i) => i !== importer)
-                      );
-                    }}
-                  >
-                    {importer}
-                    <X className="h-3 w-3" />
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-
-          <Select value={filters.destination} onValueChange={(value) => handleFilterChange("destination", value)}>
-            <SelectTrigger className="w-full">
-              <SelectValue placeholder="All Destinations" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Destinations</SelectItem>
-              {uniqueDestinations.map((destination) => (
-                <SelectItem key={destination} value={destination}>
-                  {destination}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-
-          <Select 
-            value={filters.year.toString()} 
-            onValueChange={(value) => handleFilterChange("year", Number(value))}
-          >
-            <SelectTrigger className="w-full">
-              <SelectValue placeholder="All Years" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="0">All Years</SelectItem>
-              {uniqueYears.map((year) => (
-                <SelectItem key={year} value={year.toString()}>
-                  {year}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-      </CardHeader>
-      <CardContent>
-        <ChartContainer config={chartConfig}>
-          <LineChart
-            accessibilityLayer
-            data={chartData}
-            margin={{ left: 12, right: 12 }}
-          >
-            <CartesianGrid vertical={false} />
-            <XAxis
-              dataKey="month"
-              tickLine={false}
-              axisLine={false}
-              tickMargin={8}
-              tickFormatter={(value) => value.slice(5)}
-            />
-            <ChartTooltip
-              cursor={false}
-              content={<ChartTooltipContent />}
-            />
-            {filters.importers.length === 0 ? (
-              <Line
-                dataKey="total"
-                type="natural"
-                stroke={chartConfig.total.color}
-                strokeWidth={2}
-                dot={false}
-              />
-            ) : (
-              filters.importers.map((importer, index) => (
-                <Line
-                  key={importer}
-                  dataKey={importer}
-                  type="natural"
-                  stroke={chartConfig[importer].color}
-                  strokeWidth={2}
-                  dot={false}
-                />
-              ))
-            )}
-          </LineChart>
-        </ChartContainer>
-      </CardContent>
-      <CardFooter className="flex-col items-start gap-2 text-sm">
-        <div className="flex flex-wrap gap-2">
-          {Object.entries(chartConfig).map(([key, config]) => (
-            <div key={key} className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded-full" style={{ backgroundColor: config.color }} />
-              <span>{config.label}</span>
+    <div className="flex gap-4">
+      {showFilters && (
+        <Card className="w-80">
+          <CardHeader className="border-b">
+            <CardTitle className="text-lg">Filters</CardTitle>
+            <CardDescription>Select data filters</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4 py-6">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Product</label>
+              <Select value={filters.product} onValueChange={(value) => onFilterChange("product", value)}>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="All Products" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Products</SelectItem>
+                  {uniqueProducts.map((product) => (
+                    <SelectItem key={product} value={product}>
+                      {product}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
-          ))}
-        </div>
-        <div className="leading-none text-muted-foreground">
-          Showing import values by month
-        </div>
-      </CardFooter>
-    </Card>
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Destination</label>
+              <Select value={filters.destination} onValueChange={(value) => onFilterChange("destination", value)}>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="All Destinations" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Destinations</SelectItem>
+                  {uniqueDestinations.map((destination) => (
+                    <SelectItem key={destination} value={destination}>
+                      {destination}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Year</label>
+              <Select 
+                value={filters.year.toString()} 
+                onValueChange={(value) => onFilterChange("year", Number(value))}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="All Years" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="0">All Years</SelectItem>
+                  {uniqueYears.map((year) => (
+                    <SelectItem key={year} value={year.toString()}>
+                      {year}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="pt-4 border-t space-y-2">
+              <label className="text-sm font-medium">Compare Importers</label>
+              <Select
+                value={filters.importers.length > 0 ? filters.importers[0] : "all"}
+                onValueChange={(value) => {
+                  if (value === "all") {
+                    onFilterChange("importers", []);
+                  } else {
+                    const newImporters = filters.importers.includes(value)
+                      ? filters.importers.filter(i => i !== value)
+                      : [...filters.importers, value];
+                    onFilterChange("importers", newImporters);
+                  }
+                }}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Select Importers">
+                    {filters.importers.length > 0 ? `${filters.importers.length} selected` : "All Importers"}
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Importers</SelectItem>
+                  {uniqueImporters.map((importer) => (
+                    <SelectItem key={importer} value={importer}>
+                      <div className="flex items-center gap-2">
+                        <div className={`w-3 h-3 ${filters.importers.includes(importer) ? "bg-primary" : "bg-muted"} rounded-full`} />
+                        {importer}
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {filters.importers.length > 0 && (
+                <div className="flex flex-wrap gap-1 pt-2">
+                  {filters.importers.map((importer) => (
+                    <div
+                      key={importer}
+                      className="flex items-center gap-1 px-2 py-1 text-sm bg-secondary text-secondary-foreground rounded-md cursor-pointer hover:bg-secondary/80"
+                      onClick={() => {
+                        onFilterChange(
+                          "importers",
+                          filters.importers.filter((i) => i !== importer)
+                        );
+                      }}
+                    >
+                      {importer}
+                      <X className="h-3 w-3" />
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {showChart && (
+        <Card className="flex-1">
+          <CardHeader className="border-b py-2">
+            <CardTitle className="text-base">Price Trends</CardTitle>
+            <CardDescription className="text-xs">Average price per ton (USD) by month</CardDescription>
+          </CardHeader>
+          <CardContent className="p-2">
+            <div className="w-full">
+              <ChartContainer config={chartConfig}>
+                <LineChart
+                  accessibilityLayer
+                  data={chartData}
+                  margin={{ left: 24, right: 24, top: 4, bottom: 4 }}
+                  height={140}
+                  width={800}
+                >
+                  <CartesianGrid vertical={false} />
+                  <XAxis
+                    dataKey="month"
+                    tickLine={true}
+                    axisLine={false}
+                    tickMargin={8}
+                    tickFormatter={(value) => value.slice(5)}
+                  />
+                  <ChartTooltip
+                    cursor={false}
+                    content={<ChartTooltipContent />}
+                  />
+                  {filters.importers.length === 0 ? (
+                    <Line
+                      dataKey="total"
+                      type="natural"
+                      stroke={chartConfig.total.color}
+                      strokeWidth={2}
+                      dot={false}
+                    />
+                  ) : (
+                    filters.importers.map((importer) => (
+                      <Line
+                        key={importer}
+                        dataKey={importer}
+                        type="natural"
+                        stroke={chartConfig[importer].color}
+                        strokeWidth={2}
+                        dot={false}
+                      />
+                    ))
+                  )}
+                </LineChart>
+              </ChartContainer>
+            </div>
+          </CardContent>
+          <CardFooter className="flex-col items-start gap-1 text-xs border-t p-2">
+            <div className="flex flex-wrap gap-2">
+              {Object.entries(chartConfig).map(([key, config]) => (
+                <div key={key} className="flex items-center gap-2">
+                  <div className="w-3 h-3 rounded-full" style={{ backgroundColor: config.color }} />
+                  <span>{config.label}</span>
+                </div>
+              ))}
+            </div>
+          </CardFooter>
+        </Card>
+      )}
+    </div>
   );
 }

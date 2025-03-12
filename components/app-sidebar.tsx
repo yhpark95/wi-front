@@ -1,7 +1,10 @@
+"use client"
+
 import * as React from "react"
+import { usePathname } from "next/navigation"
+import Link from "next/link"
 
 import { SearchForm } from "@/components/search-form"
-import { VersionSwitcher } from "@/components/version-switcher"
 import {
   Sidebar,
   SidebarContent,
@@ -20,15 +23,15 @@ const data = {
   versions: ["1.0.1", "1.1.0-alpha", "2.0.0-beta1"],
   navMain: [
     {
-      title: "Menu",
+      title: "Analysis",
       url: "#",
       items: [
         {
-          title: "Excel Upload",
-          url: "#",
+          title: "Customer Analysis",
+          url: "/customer-analysis",
         },
         {
-          title: "Charts",
+          title: "Country Analysis",
           url: "#",
         },
       ],
@@ -37,26 +40,23 @@ const data = {
 }
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
+  const pathname = usePathname()
+
   return (
     <Sidebar {...props}>
       <SidebarHeader>
-        <VersionSwitcher
-          versions={data.versions}
-          defaultVersion={data.versions[0]}
-        />
         <SearchForm />
       </SidebarHeader>
       <SidebarContent>
-        {/* We create a SidebarGroup for each parent. */}
         {data.navMain.map((item) => (
           <SidebarGroup key={item.title}>
             <SidebarGroupLabel>{item.title}</SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu>
-                {item.items.map((item) => (
-                  <SidebarMenuItem key={item.title}>
-                    <SidebarMenuButton asChild isActive={item.isActive}>
-                      <a href={item.url}>{item.title}</a>
+                {item.items.map((subItem) => (
+                  <SidebarMenuItem key={subItem.title}>
+                    <SidebarMenuButton asChild isActive={pathname === subItem.url}>
+                      <Link href={subItem.url}>{subItem.title}</Link>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
                 ))}
