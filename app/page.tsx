@@ -228,16 +228,18 @@ export default function Page() {
       </header>
       
       <main className="p-4">
-        <div className="grid grid-cols-[300px_1fr] gap-4">
-          <Filters 
-            filters={filters}
-            onFilterChange={handleFilterChange}
-            uniqueProducts={uniqueProducts}
-            uniqueImporters={uniqueImporters}
-            uniqueDestinations={uniqueDestinations}
-            uniqueYears={uniqueYears}
-          />
-          <div className="space-y-4">
+        <div className="grid grid-cols-3 grid-rows-2 gap-4">
+          <div className="col-span-1 row-span-2">
+            <Filters 
+              filters={filters}
+              onFilterChange={handleFilterChange}
+              uniqueProducts={uniqueProducts}
+              uniqueImporters={uniqueImporters}
+              uniqueDestinations={uniqueDestinations}
+              uniqueYears={uniqueYears}
+            />
+          </div>
+          <div className="col-span-1 row-span-1">
             <PriceLineChart 
               data={originalData}
               filters={filters}
@@ -249,10 +251,28 @@ export default function Page() {
               showFilters={false}
               showChart={true}
             />
+          </div>
+          <div className="col-span-1 row-span-1">
             <QuantityBarChart 
               data={originalData}
               filters={filters}
             />
+          </div>
+          <div className="col-span-1 row-span-1">
+            <Card>
+              <CardContent className="p-4">
+                <h3 className="font-medium">Summary</h3>
+                <p className="text-sm text-muted-foreground">Key metrics and insights</p>
+              </CardContent>
+            </Card>
+          </div>
+          <div className="col-span-1 row-span-1">
+            <Card>
+              <CardContent className="p-4">
+                <h3 className="font-medium">Trends</h3>
+                <p className="text-sm text-muted-foreground">Market trends and patterns</p>
+              </CardContent>
+            </Card>
           </div>
         </div>
       </main>

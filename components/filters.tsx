@@ -62,9 +62,9 @@ export function Filters({
   uniqueYears,
 }: FiltersProps) {
   return (
-    <Card className="h-full">
-      <CardHeader className="border-b">
-        <CardTitle className="text-lg">Filters</CardTitle>
+    <Card>
+      <CardHeader >
+        <CardTitle >Filters</CardTitle>
         <CardDescription>Select data filters</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4 py-6">
