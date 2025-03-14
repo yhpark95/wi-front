@@ -60,7 +60,7 @@ const aggregateQuantityByMonth = (
   console.log("Aggregating quantity data with filters:", filters);
   
   // Apply non-importer filters first
-  let filteredData = data.filter((item) => {
+  const filteredData = data.filter((item) => {
     const productMatch = (filters.product === "all" || item.product === filters.product);
     const destinationMatch = (filters.destination === "all" || item.destination === filters.destination);
     const yearMatch = (filters.year === 0 || item.year === filters.year);
@@ -106,7 +106,7 @@ const aggregateQuantityByMonth = (
 
   // Initialize data structure for all months and importers
   const result = sortedMonths.map(month => {
-    const dataPoint: { [key: string]: any } = { month };
+    const dataPoint: Record<string, number | string> = { month };
     filters.importers?.forEach(importer => {
       dataPoint[importer] = 0;
     });
@@ -119,7 +119,7 @@ const aggregateQuantityByMonth = (
       const monthKey = `${item.year}-${String(item.month).padStart(2, "0")}`;
       const monthData = result.find(d => d.month === monthKey);
       if (monthData) {
-        monthData[item.importer] = (monthData[item.importer] || 0) + item.quantity;
+        monthData[item.importer] = (monthData[item.importer] as number || 0) + item.quantity;
       }
     }
   });
@@ -160,19 +160,19 @@ export function QuantityBarChart({ data, filters }: BarChartProps) {
   } satisfies ChartConfig;
 
   return (
-    <Card>
+    <Card className="h-full">
       <CardHeader className="border-b py-2">
         <CardTitle className="text-base">Quantity Trends</CardTitle>
         <CardDescription className="text-xs">Total quantity by month</CardDescription>
       </CardHeader>
       <CardContent className="p-2">
-        <div className="w-full">
+        <div className="w-full h-[calc(100%-120px)]">
           <ChartContainer config={chartConfig}>
             <BarChart
               data={chartData}
               margin={{ left: 24, right: 24, top: 4, bottom: 4 }}
-              height={140}
-              width={800}
+              height={0}
+              width={0}
               barGap={0}
               maxBarSize={25}
             >

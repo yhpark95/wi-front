@@ -3,23 +3,21 @@
 import { useEffect, useState } from "react";
 import axios from "axios";
 
-import { AppSidebar } from "@/components/app-sidebar"
 import { PriceLineChart } from "@/components/line-chart"
 import { QuantityBarChart } from "@/components/bar-chart"
 import {
-  Breadcrumb,
-  BreadcrumbItem,
-  BreadcrumbLink,
-  BreadcrumbList,
-  BreadcrumbPage,
-  BreadcrumbSeparator,
-} from "@/components/ui/breadcrumb"
-import { Separator } from "@/components/ui/separator"
-import {
-  SidebarInset,
-  SidebarProvider,
-  SidebarTrigger,
-} from "@/components/ui/sidebar"
+  NavigationMenu,
+  NavigationMenuContent,
+  NavigationMenuItem,
+  NavigationMenuLink,
+  NavigationMenuList,
+  NavigationMenuTrigger,
+} from "@/components/ui/navigation-menu"
+import { ModeToggle } from "@/components/mode-toggle"
+import { Button } from "@/components/ui/button"
+import { UserNav } from "@/components/user-nav"
+import { Card, CardContent } from "@/components/ui/card"
+import { Filters } from "@/components/filters";
 
 interface ImportData {
   id: number;
@@ -45,6 +43,8 @@ interface ImportData {
   product: string;
   insert_date: string;
 }
+
+type FilterValue = string | string[] | number;
 
 export default function Page() {
   const [originalData, setOriginalData] = useState<ImportData[]>([]);
@@ -156,7 +156,7 @@ export default function Page() {
     validateFilters();
   }, [filters, originalData, uniqueProducts, uniqueImporters, uniqueDestinations, uniqueYears]);
 
-  const handleFilterChange = (filterType: keyof typeof filters, value: any) => {
+  const handleFilterChange = (filterType: keyof typeof filters, value: FilterValue) => {
     setFilters(prev => ({
       ...prev,
       [filterType]: value
@@ -167,61 +167,95 @@ export default function Page() {
   if (error) return <div className="text-red-500">{error}</div>;
 
   return (
-    <SidebarProvider>
-      <AppSidebar />
-      <SidebarInset>
-        <header className="flex h-16 shrink-0 items-center gap-2 border-b px-4">
-          <SidebarTrigger className="-ml-1" />
-          <Separator orientation="vertical" className="mr-2 h-4" />
-          <Breadcrumb>
-            <BreadcrumbList>
-              <BreadcrumbItem className="hidden md:block">
-                <BreadcrumbLink href="#">
-                  Building Your Application
-                </BreadcrumbLink>
-              </BreadcrumbItem>
-              <BreadcrumbSeparator className="hidden md:block" />
-              <BreadcrumbItem>
-                <BreadcrumbPage>Data Fetching</BreadcrumbPage>
-              </BreadcrumbItem>
-            </BreadcrumbList>
-          </Breadcrumb>
-        </header>
-        <div className="flex-1 overflow-auto p-1">
-          <div className="flex gap-2">
-            <div className="w-80">
-              <PriceLineChart 
-                data={originalData}
-                filters={filters}
-                onFilterChange={handleFilterChange}
-                uniqueProducts={uniqueProducts}
-                uniqueImporters={uniqueImporters}
-                uniqueDestinations={uniqueDestinations}
-                uniqueYears={uniqueYears}
-                showFilters={true}
-                showChart={false}
-              />
-            </div>
-            <div className="flex-1 space-y-1 max-h-[calc(100vh-10rem)] overflow-auto">
-              <PriceLineChart 
-                data={originalData}
-                filters={filters}
-                onFilterChange={handleFilterChange}
-                uniqueProducts={uniqueProducts}
-                uniqueImporters={uniqueImporters}
-                uniqueDestinations={uniqueDestinations}
-                uniqueYears={uniqueYears}
-                showFilters={false}
-                showChart={true}
-              />
-              <QuantityBarChart 
-                data={originalData}
-                filters={filters}
-              />
-            </div>
+    <div className="min-h-screen">
+      <header className="border-b p-4">
+        <div className="flex items-center gap-4">
+          <h2>WI Analytics</h2>
+          <NavigationMenu>
+            <NavigationMenuList>
+              <NavigationMenuItem>
+                <NavigationMenuTrigger>Overview</NavigationMenuTrigger>
+                <NavigationMenuContent>
+                  <ul className="w-[400px] p-4">
+                    <li>
+                      <NavigationMenuLink asChild>
+                        <a href="#" className="block p-4">
+                          <div className="text-lg font-medium">Customer Analysis</div>
+                          <p className="text-sm text-muted-foreground">
+                            Analyze customer behavior and trends through interactive charts
+                          </p>
+                        </a>
+                      </NavigationMenuLink>
+                    </li>
+                  </ul>
+                </NavigationMenuContent>
+              </NavigationMenuItem>
+              <NavigationMenuItem>
+                <NavigationMenuTrigger>Reports</NavigationMenuTrigger>
+                <NavigationMenuContent>
+                  <ul className="w-[400px] p-4">
+                    <li>
+                      <NavigationMenuLink asChild>
+                        <a href="#" className="block p-3">
+                          <div className="font-medium">Price Analysis</div>
+                          <p className="text-sm text-muted-foreground">
+                            Detailed price trends and comparisons
+                          </p>
+                        </a>
+                      </NavigationMenuLink>
+                    </li>
+                    <li>
+                      <NavigationMenuLink asChild>
+                        <a href="#" className="block p-3">
+                          <div className="font-medium">Quantity Analysis</div>
+                          <p className="text-sm text-muted-foreground">
+                            Volume and quantity distribution reports
+                          </p>
+                        </a>
+                      </NavigationMenuLink>
+                    </li>
+                  </ul>
+                </NavigationMenuContent>
+              </NavigationMenuItem>
+            </NavigationMenuList>
+          </NavigationMenu>
+          <div className="ml-auto flex items-center gap-4">
+            <Button variant="outline" size="sm">Feedback</Button>
+            <ModeToggle />
+            <UserNav />
           </div>
         </div>
-      </SidebarInset>
-    </SidebarProvider>
+      </header>
+      
+      <main className="p-4">
+        <div className="grid grid-cols-[300px_1fr] gap-4">
+          <Filters 
+            filters={filters}
+            onFilterChange={handleFilterChange}
+            uniqueProducts={uniqueProducts}
+            uniqueImporters={uniqueImporters}
+            uniqueDestinations={uniqueDestinations}
+            uniqueYears={uniqueYears}
+          />
+          <div className="space-y-4">
+            <PriceLineChart 
+              data={originalData}
+              filters={filters}
+              onFilterChange={handleFilterChange}
+              uniqueProducts={uniqueProducts}
+              uniqueImporters={uniqueImporters}
+              uniqueDestinations={uniqueDestinations}
+              uniqueYears={uniqueYears}
+              showFilters={false}
+              showChart={true}
+            />
+            <QuantityBarChart 
+              data={originalData}
+              filters={filters}
+            />
+          </div>
+        </div>
+      </main>
+    </div>
   )
 }
