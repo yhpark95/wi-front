@@ -67,7 +67,7 @@ export function Filters({
         <CardTitle >Filters</CardTitle>
         <CardDescription>Select data filters</CardDescription>
       </CardHeader>
-      <CardContent className="space-y-4 py-6">
+      <CardContent className="space-y-2 py-1">
         <div className="space-y-2">
           <label className="text-sm font-medium">Product</label>
           <Select value={filters.product} onValueChange={(value) => onFilterChange("product", value)}>

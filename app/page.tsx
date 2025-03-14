@@ -228,7 +228,7 @@ export default function Page() {
       </header>
       
       <main className="p-4">
-        <div className="grid grid-cols-3 grid-rows-2 gap-4">
+        <div className="grid grid-cols-[300px_1fr_1fr] grid-rows-2 gap-4">
           <div className="col-span-1 row-span-2">
             <Filters 
               filters={filters}
