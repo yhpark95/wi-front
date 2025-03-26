@@ -24,6 +24,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Filters } from "@/components/filters";
 
 // Define TypeScript interface
 interface ImportData {
@@ -59,7 +60,7 @@ interface LineChartProps {
     destination: string;
     year: number;
   };
-  onFilterChange: (filterType: "product" | "destination" | "year" | "importers", value: any) => void;
+  onFilterChange: (filterType: "product" | "destination" | "year" | "importers", value: string | string[] | number) => void;
   uniqueProducts: string[];
   uniqueImporters: string[];
   uniqueDestinations: string[];
@@ -69,40 +70,38 @@ interface LineChartProps {
 }
 
 // Aggregates data by month with optional filters
-const aggregateDataByMonth = (
+const aggregatePriceByMonth = (
   data: ImportData[],
   filters: { product?: string; importers?: string[]; destination?: string; year?: number }
 ) => {
-  console.log("Aggregating data with filters:", filters);
+  console.log("Aggregating price data with filters:", filters);
   
   // Apply non-importer filters first
-  let filteredData = data.filter((item) => {
+  const filteredData = data.filter((item) => {
     const productMatch = (filters.product === "all" || item.product === filters.product);
     const destinationMatch = (filters.destination === "all" || item.destination === filters.destination);
     const yearMatch = (filters.year === 0 || item.year === filters.year);
     return productMatch && destinationMatch && yearMatch;
   });
   
-  console.log("After initial filtering:", {
-    originalLength: data.length,
-    filteredLength: filteredData.length,
-    sampleItem: filteredData[0],
-    filters: {
-      product: filters.product,
-      destination: filters.destination,
-      year: filters.year
-    }
-  });
+  // Get all unique months from the filtered data
+  const allMonths = new Set(
+    filteredData.map(item => `${item.year}-${String(item.month).padStart(2, "0")}`)
+  );
+  const sortedMonths = Array.from(allMonths).sort();
 
   // If no importers selected, aggregate all together
   if (!filters.importers || filters.importers.length === 0) {
     const monthlyData: { [key: string]: { month: string; total_value: number; total_quantity: number } } = {};
     
+    // Initialize all months with zero
+    sortedMonths.forEach(month => {
+      monthlyData[month] = { month, total_value: 0, total_quantity: 0 };
+    });
+
+    // Aggregate values and quantities
     filteredData.forEach((item) => {
       const monthKey = `${item.year}-${String(item.month).padStart(2, "0")}`;
-      if (!monthlyData[monthKey]) {
-        monthlyData[monthKey] = { month: monthKey, total_value: 0, total_quantity: 0 };
-      }
       monthlyData[monthKey].total_value += item.total_value_usd;
       monthlyData[monthKey].total_quantity += item.quantity;
     });
@@ -114,7 +113,7 @@ const aggregateDataByMonth = (
       }))
       .sort((a, b) => a.month.localeCompare(b.month));
 
-    console.log("Aggregated data:", {
+    console.log("Aggregated price data (no importers):", {
       monthKeys: Object.keys(monthlyData),
       resultLength: result.length,
       sampleResult: result[0]
@@ -123,38 +122,33 @@ const aggregateDataByMonth = (
     return result;
   }
 
-  // Aggregate data by importer
-  const monthlyDataByImporter: { [key: string]: { [month: string]: { value: number; quantity: number } } } = {};
-  const months = new Set<string>();
-
-  filteredData.forEach((item) => {
-    if (filters.importers?.includes(item.importer)) {
-      const monthKey = `${item.year}-${String(item.month).padStart(2, "0")}`;
-      months.add(monthKey);
-
-      if (!monthlyDataByImporter[item.importer]) {
-        monthlyDataByImporter[item.importer] = {};
-      }
-      if (!monthlyDataByImporter[item.importer][monthKey]) {
-        monthlyDataByImporter[item.importer][monthKey] = { value: 0, quantity: 0 };
-      }
-      monthlyDataByImporter[item.importer][monthKey].value += item.total_value_usd;
-      monthlyDataByImporter[item.importer][monthKey].quantity += item.quantity;
-    }
-  });
-
-  // Convert to chart format with average price per ton
-  const sortedMonths = Array.from(months).sort();
-  return sortedMonths.map(month => {
-    const dataPoint: { [key: string]: any } = { month };
+  // Initialize data structure for all months and importers
+  const result = sortedMonths.map(month => {
+    const dataPoint: Record<string, number | string> = { month };
     filters.importers?.forEach(importer => {
-      const monthData = monthlyDataByImporter[importer]?.[month];
-      dataPoint[importer] = monthData?.quantity > 0 
-        ? monthData.value / monthData.quantity 
-        : 0;
+      dataPoint[importer] = 0;
     });
     return dataPoint;
   });
+
+  // Aggregate data by importer
+  filteredData.forEach((item) => {
+    if (filters.importers?.includes(item.importer)) {
+      const monthKey = `${item.year}-${String(item.month).padStart(2, "0")}`;
+      const monthData = result.find(d => d.month === monthKey);
+      if (monthData) {
+        monthData[item.importer] = (monthData[item.importer] as number || 0) + (item.total_value_usd / item.quantity);
+      }
+    }
+  });
+
+  console.log("Aggregated price data (with importers):", {
+    resultLength: result.length,
+    sampleResult: result[0],
+    importers: filters.importers
+  });
+
+  return result;
 };
 
 export function PriceLineChart({ 
@@ -168,7 +162,7 @@ export function PriceLineChart({
   showFilters = true,
   showChart = true
 }: LineChartProps) {
-  const chartData = aggregateDataByMonth(data, filters);
+  const chartData = aggregatePriceByMonth(data, filters);
   console.log("Line Chart Data:", {
     rawDataLength: data.length,
     transformedData: chartData,
@@ -193,139 +187,33 @@ export function PriceLineChart({
   } satisfies ChartConfig;
 
   return (
-    <div className="flex gap-4">
+    <div className="h-full">
       {showFilters && (
-        <Card className="w-80">
-          <CardHeader className="border-b">
-            <CardTitle className="text-lg">Filters</CardTitle>
-            <CardDescription>Select data filters</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4 py-6">
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Product</label>
-              <Select value={filters.product} onValueChange={(value) => onFilterChange("product", value)}>
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="All Products" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Products</SelectItem>
-                  {uniqueProducts.map((product) => (
-                    <SelectItem key={product} value={product}>
-                      {product}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Destination</label>
-              <Select value={filters.destination} onValueChange={(value) => onFilterChange("destination", value)}>
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="All Destinations" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Destinations</SelectItem>
-                  {uniqueDestinations.map((destination) => (
-                    <SelectItem key={destination} value={destination}>
-                      {destination}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Year</label>
-              <Select 
-                value={filters.year.toString()} 
-                onValueChange={(value) => onFilterChange("year", Number(value))}
-              >
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="All Years" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="0">All Years</SelectItem>
-                  {uniqueYears.map((year) => (
-                    <SelectItem key={year} value={year.toString()}>
-                      {year}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="pt-4 border-t space-y-2">
-              <label className="text-sm font-medium">Compare Importers</label>
-              <Select
-                value={filters.importers.length > 0 ? filters.importers[0] : "all"}
-                onValueChange={(value) => {
-                  if (value === "all") {
-                    onFilterChange("importers", []);
-                  } else {
-                    const newImporters = filters.importers.includes(value)
-                      ? filters.importers.filter(i => i !== value)
-                      : [...filters.importers, value];
-                    onFilterChange("importers", newImporters);
-                  }
-                }}
-              >
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Select Importers">
-                    {filters.importers.length > 0 ? `${filters.importers.length} selected` : "All Importers"}
-                  </SelectValue>
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Importers</SelectItem>
-                  {uniqueImporters.map((importer) => (
-                    <SelectItem key={importer} value={importer}>
-                      <div className="flex items-center gap-2">
-                        <div className={`w-3 h-3 ${filters.importers.includes(importer) ? "bg-primary" : "bg-muted"} rounded-full`} />
-                        {importer}
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {filters.importers.length > 0 && (
-                <div className="flex flex-wrap gap-1 pt-2">
-                  {filters.importers.map((importer) => (
-                    <div
-                      key={importer}
-                      className="flex items-center gap-1 px-2 py-1 text-sm bg-secondary text-secondary-foreground rounded-md cursor-pointer hover:bg-secondary/80"
-                      onClick={() => {
-                        onFilterChange(
-                          "importers",
-                          filters.importers.filter((i) => i !== importer)
-                        );
-                      }}
-                    >
-                      {importer}
-                      <X className="h-3 w-3" />
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </CardContent>
-        </Card>
+        <Filters 
+          filters={filters}
+          onFilterChange={onFilterChange}
+          uniqueProducts={uniqueProducts}
+          uniqueImporters={uniqueImporters}
+          uniqueDestinations={uniqueDestinations}
+          uniqueYears={uniqueYears}
+        />
       )}
 
       {showChart && (
-        <Card className="flex-1">
+        <Card className="h-full">
           <CardHeader className="border-b py-2">
             <CardTitle className="text-base">Price Trends</CardTitle>
             <CardDescription className="text-xs">Average price per ton (USD) by month</CardDescription>
           </CardHeader>
           <CardContent className="p-2">
-            <div className="w-full">
+            <div className="w-full h-[calc(100%-120px)]">
               <ChartContainer config={chartConfig}>
                 <LineChart
                   accessibilityLayer
                   data={chartData}
                   margin={{ left: 24, right: 24, top: 4, bottom: 4 }}
-                  height={140}
-                  width={800}
+                  height={0}
+                  width={0}
                 >
                   <CartesianGrid vertical={false} />
                   <XAxis

@@ -3,23 +3,26 @@
 import { useEffect, useState } from "react";
 import axios from "axios";
 
-import { AppSidebar } from "@/components/app-sidebar"
 import { PriceLineChart } from "@/components/line-chart"
 import { QuantityBarChart } from "@/components/bar-chart"
+import { ModeToggle } from "@/components/mode-toggle"
+import { Button } from "@/components/ui/button"
+import { UserNav } from "@/components/user-nav"
+import { Card, CardContent } from "@/components/ui/card"
+import { Filters } from "@/components/filters";
 import {
-  Breadcrumb,
-  BreadcrumbItem,
-  BreadcrumbLink,
-  BreadcrumbList,
-  BreadcrumbPage,
-  BreadcrumbSeparator,
-} from "@/components/ui/breadcrumb"
-import { Separator } from "@/components/ui/separator"
-import {
-  SidebarInset,
-  SidebarProvider,
-  SidebarTrigger,
-} from "@/components/ui/sidebar"
+  Container,
+  Header,
+  HeaderContent,
+  Main,
+  Grid,
+  FiltersColumn,
+  ChartColumn,
+  ChartColumn2,
+  CardColumn,
+  CardColumn2,
+} from "@/components/styled";
+import { NavMenu } from "@/components/nav-menu"
 
 interface ImportData {
   id: number;
@@ -45,6 +48,8 @@ interface ImportData {
   product: string;
   insert_date: string;
 }
+
+type FilterValue = string | string[] | number;
 
 export default function Page() {
   const [originalData, setOriginalData] = useState<ImportData[]>([]);
@@ -156,7 +161,7 @@ export default function Page() {
     validateFilters();
   }, [filters, originalData, uniqueProducts, uniqueImporters, uniqueDestinations, uniqueYears]);
 
-  const handleFilterChange = (filterType: keyof typeof filters, value: any) => {
+  const handleFilterChange = (filterType: keyof typeof filters, value: FilterValue) => {
     setFilters(prev => ({
       ...prev,
       [filterType]: value
@@ -167,61 +172,68 @@ export default function Page() {
   if (error) return <div className="text-red-500">{error}</div>;
 
   return (
-    <SidebarProvider>
-      <AppSidebar />
-      <SidebarInset>
-        <header className="flex h-16 shrink-0 items-center gap-2 border-b px-4">
-          <SidebarTrigger className="-ml-1" />
-          <Separator orientation="vertical" className="mr-2 h-4" />
-          <Breadcrumb>
-            <BreadcrumbList>
-              <BreadcrumbItem className="hidden md:block">
-                <BreadcrumbLink href="#">
-                  Building Your Application
-                </BreadcrumbLink>
-              </BreadcrumbItem>
-              <BreadcrumbSeparator className="hidden md:block" />
-              <BreadcrumbItem>
-                <BreadcrumbPage>Data Fetching</BreadcrumbPage>
-              </BreadcrumbItem>
-            </BreadcrumbList>
-          </Breadcrumb>
-        </header>
-        <div className="flex-1 overflow-auto p-1">
-          <div className="flex gap-2">
-            <div className="w-80">
-              <PriceLineChart 
-                data={originalData}
-                filters={filters}
-                onFilterChange={handleFilterChange}
-                uniqueProducts={uniqueProducts}
-                uniqueImporters={uniqueImporters}
-                uniqueDestinations={uniqueDestinations}
-                uniqueYears={uniqueYears}
-                showFilters={true}
-                showChart={false}
-              />
-            </div>
-            <div className="flex-1 space-y-1 max-h-[calc(100vh-10rem)] overflow-auto">
-              <PriceLineChart 
-                data={originalData}
-                filters={filters}
-                onFilterChange={handleFilterChange}
-                uniqueProducts={uniqueProducts}
-                uniqueImporters={uniqueImporters}
-                uniqueDestinations={uniqueDestinations}
-                uniqueYears={uniqueYears}
-                showFilters={false}
-                showChart={true}
-              />
-              <QuantityBarChart 
-                data={originalData}
-                filters={filters}
-              />
-            </div>
-          </div>
-        </div>
-      </SidebarInset>
-    </SidebarProvider>
+    <div className="min-h-screen">
+      <Header>
+        <HeaderContent>
+          <h2>WI Analytics</h2>
+          <NavMenu />
+          <Container>
+            <Button variant="outline" size="sm">Feedback</Button>
+            <ModeToggle />
+            <UserNav />
+          </Container>
+        </HeaderContent>
+      </Header>
+      
+      <Main>
+        <Grid>
+          <FiltersColumn>
+            <Filters 
+              filters={filters}
+              onFilterChange={handleFilterChange}
+              uniqueProducts={uniqueProducts}
+              uniqueImporters={uniqueImporters}
+              uniqueDestinations={uniqueDestinations}
+              uniqueYears={uniqueYears}
+            />
+          </FiltersColumn>
+          <ChartColumn>
+            <PriceLineChart 
+              data={originalData}
+              filters={filters}
+              onFilterChange={handleFilterChange}
+              uniqueProducts={uniqueProducts}
+              uniqueImporters={uniqueImporters}
+              uniqueDestinations={uniqueDestinations}
+              uniqueYears={uniqueYears}
+              showFilters={false}
+              showChart={true}
+            />
+          </ChartColumn>
+          <ChartColumn2>
+            <QuantityBarChart 
+              data={originalData}
+              filters={filters}
+            />
+          </ChartColumn2>
+          <CardColumn>
+            <Card>
+              <CardContent className="p-4">
+                <h3 className="font-medium">Summary</h3>
+                <p className="text-sm text-muted-foreground">Key metrics and insights</p>
+              </CardContent>
+            </Card>
+          </CardColumn>
+          <CardColumn2>
+            <Card>
+              <CardContent className="p-4">
+                <h3 className="font-medium">Trends</h3>
+                <p className="text-sm text-muted-foreground">Market trends and patterns</p>
+              </CardContent>
+            </Card>
+          </CardColumn2>
+        </Grid>
+      </Main>
+    </div>
   )
 }
