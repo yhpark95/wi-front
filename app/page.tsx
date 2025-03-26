@@ -5,19 +5,24 @@ import axios from "axios";
 
 import { PriceLineChart } from "@/components/line-chart"
 import { QuantityBarChart } from "@/components/bar-chart"
-import {
-  NavigationMenu,
-  NavigationMenuContent,
-  NavigationMenuItem,
-  NavigationMenuLink,
-  NavigationMenuList,
-  NavigationMenuTrigger,
-} from "@/components/ui/navigation-menu"
 import { ModeToggle } from "@/components/mode-toggle"
 import { Button } from "@/components/ui/button"
 import { UserNav } from "@/components/user-nav"
 import { Card, CardContent } from "@/components/ui/card"
 import { Filters } from "@/components/filters";
+import {
+  Container,
+  Header,
+  HeaderContent,
+  Main,
+  Grid,
+  FiltersColumn,
+  ChartColumn,
+  ChartColumn2,
+  CardColumn,
+  CardColumn2,
+} from "@/components/styled";
+import { NavMenu } from "@/components/nav-menu"
 
 interface ImportData {
   id: number;
@@ -168,68 +173,21 @@ export default function Page() {
 
   return (
     <div className="min-h-screen">
-      <header className="border-b p-4">
-        <div className="flex items-center gap-4">
+      <Header>
+        <HeaderContent>
           <h2>WI Analytics</h2>
-          <NavigationMenu>
-            <NavigationMenuList>
-              <NavigationMenuItem>
-                <NavigationMenuTrigger>Overview</NavigationMenuTrigger>
-                <NavigationMenuContent>
-                  <ul className="w-[400px] p-4">
-                    <li>
-                      <NavigationMenuLink asChild>
-                        <a href="#" className="block p-4">
-                          <div className="text-lg font-medium">Customer Analysis</div>
-                          <p className="text-sm text-muted-foreground">
-                            Analyze customer behavior and trends through interactive charts
-                          </p>
-                        </a>
-                      </NavigationMenuLink>
-                    </li>
-                  </ul>
-                </NavigationMenuContent>
-              </NavigationMenuItem>
-              <NavigationMenuItem>
-                <NavigationMenuTrigger>Reports</NavigationMenuTrigger>
-                <NavigationMenuContent>
-                  <ul className="w-[400px] p-4">
-                    <li>
-                      <NavigationMenuLink asChild>
-                        <a href="#" className="block p-3">
-                          <div className="font-medium">Price Analysis</div>
-                          <p className="text-sm text-muted-foreground">
-                            Detailed price trends and comparisons
-                          </p>
-                        </a>
-                      </NavigationMenuLink>
-                    </li>
-                    <li>
-                      <NavigationMenuLink asChild>
-                        <a href="#" className="block p-3">
-                          <div className="font-medium">Quantity Analysis</div>
-                          <p className="text-sm text-muted-foreground">
-                            Volume and quantity distribution reports
-                          </p>
-                        </a>
-                      </NavigationMenuLink>
-                    </li>
-                  </ul>
-                </NavigationMenuContent>
-              </NavigationMenuItem>
-            </NavigationMenuList>
-          </NavigationMenu>
-          <div className="ml-auto flex items-center gap-4">
+          <NavMenu />
+          <Container>
             <Button variant="outline" size="sm">Feedback</Button>
             <ModeToggle />
             <UserNav />
-          </div>
-        </div>
-      </header>
+          </Container>
+        </HeaderContent>
+      </Header>
       
-      <main className="p-4">
-        <div className="grid grid-cols-[300px_1fr_1fr] grid-rows-2 gap-4">
-          <div className="col-span-1 row-span-2">
+      <Main>
+        <Grid>
+          <FiltersColumn>
             <Filters 
               filters={filters}
               onFilterChange={handleFilterChange}
@@ -238,8 +196,8 @@ export default function Page() {
               uniqueDestinations={uniqueDestinations}
               uniqueYears={uniqueYears}
             />
-          </div>
-          <div className="col-span-1 row-span-1">
+          </FiltersColumn>
+          <ChartColumn>
             <PriceLineChart 
               data={originalData}
               filters={filters}
@@ -251,31 +209,31 @@ export default function Page() {
               showFilters={false}
               showChart={true}
             />
-          </div>
-          <div className="col-span-1 row-span-1">
+          </ChartColumn>
+          <ChartColumn2>
             <QuantityBarChart 
               data={originalData}
               filters={filters}
             />
-          </div>
-          <div className="col-span-1 row-span-1">
+          </ChartColumn2>
+          <CardColumn>
             <Card>
               <CardContent className="p-4">
                 <h3 className="font-medium">Summary</h3>
                 <p className="text-sm text-muted-foreground">Key metrics and insights</p>
               </CardContent>
             </Card>
-          </div>
-          <div className="col-span-1 row-span-1">
+          </CardColumn>
+          <CardColumn2>
             <Card>
               <CardContent className="p-4">
                 <h3 className="font-medium">Trends</h3>
                 <p className="text-sm text-muted-foreground">Market trends and patterns</p>
               </CardContent>
             </Card>
-          </div>
-        </div>
-      </main>
+          </CardColumn2>
+        </Grid>
+      </Main>
     </div>
   )
 }
