@@ -103,7 +103,7 @@ const DatePickerButton = ({
         selected={date}
         onSelect={onSelect}
         disabled={(d) =>
-          (minDate && d < minDate) || (maxDate && d > maxDate)
+          Boolean((minDate && d < minDate) || (maxDate && d > maxDate))
         }
       />
     </PopoverContent>
