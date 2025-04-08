@@ -1,3 +1,5 @@
+'use client';
+
 import React from 'react';
 import styled from 'styled-components';
 import Link from 'next/link';
@@ -44,9 +46,9 @@ const Dropdown = styled.div<{ isopen: boolean }>`
   border-radius: 0.5rem;
   box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
   min-width: 400px;
-  opacity: ${props => props.isopen ? 1 : 0};
-  visibility: ${props => props.isopen ? 'visible' : 'hidden'};
-  transform: translateY(${props => props.isopen ? '0' : '-10px'});
+  opacity: ${({ isopen }) => (isopen ? 1 : 0)};
+  visibility: ${({ isopen }) => (isopen ? 'visible' : 'hidden')};
+  transform: translateY(${({ isopen }) => (isopen ? '0' : '-10px')});
   transition: all 0.2s ease-out;
   z-index: 50;
 `;
@@ -97,7 +99,7 @@ const ChevronIcon = styled.span<{ isopen: boolean }>`
   border-left: 4px solid transparent;
   border-right: 4px solid transparent;
   border-top: 4px solid currentColor;
-  transform: ${props => props.isopen ? 'rotate(180deg)' : 'none'};
+  transform: ${({ isopen }) => (isopen ? 'rotate(180deg)' : 'rotate(0deg)')};
   transition: transform 0.2s;
 `;
 
@@ -115,15 +117,12 @@ export function NavMenu() {
   return (
     <Nav>
       <NavList>
-        <NavItem
-          onMouseEnter={() => handleMouseEnter('overview')}
-          onMouseLeave={handleMouseLeave}
-        >
+        <NavItem onMouseEnter={() => handleMouseEnter('overview')} onMouseLeave={handleMouseLeave}>
           <NavButton>
             Overview
             <ChevronIcon isopen={openMenu === 'overview'} />
           </NavButton>
-          <Dropdown isopen={openMenu === 'overview' ? true : undefined}>
+          <Dropdown isopen={openMenu === 'overview'}>
             <DropdownList>
               <DropdownItem>
                 <DropdownLink href="#">
@@ -137,10 +136,7 @@ export function NavMenu() {
           </Dropdown>
         </NavItem>
 
-        <NavItem
-          onMouseEnter={() => handleMouseEnter('reports')}
-          onMouseLeave={handleMouseLeave}
-        >
+        <NavItem onMouseEnter={() => handleMouseEnter('reports')} onMouseLeave={handleMouseLeave}>
           <NavButton>
             Reports
             <ChevronIcon isopen={openMenu === 'reports'} />
@@ -167,10 +163,7 @@ export function NavMenu() {
           </Dropdown>
         </NavItem>
 
-        <NavItem
-          onMouseEnter={() => handleMouseEnter('data')}
-          onMouseLeave={handleMouseLeave}
-        >
+        <NavItem onMouseEnter={() => handleMouseEnter('data')} onMouseLeave={handleMouseLeave}>
           <NavButton>
             Data
             <ChevronIcon isopen={openMenu === 'data'} />
@@ -191,4 +184,4 @@ export function NavMenu() {
       </NavList>
     </Nav>
   );
-} 
+}
