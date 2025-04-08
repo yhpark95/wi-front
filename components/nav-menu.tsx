@@ -35,7 +35,7 @@ const NavButton = styled.button`
   }
 `;
 
-const Dropdown = styled.div<{ isOpen: boolean }>`
+const Dropdown = styled.div<{ isopen: boolean }>`
   position: absolute;
   top: 100%;
   left: 0;
@@ -44,9 +44,9 @@ const Dropdown = styled.div<{ isOpen: boolean }>`
   border-radius: 0.5rem;
   box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
   min-width: 400px;
-  opacity: ${props => props.isOpen ? 1 : 0};
-  visibility: ${props => props.isOpen ? 'visible' : 'hidden'};
-  transform: translateY(${props => props.isOpen ? '0' : '-10px'});
+  opacity: ${props => props.isopen ? 1 : 0};
+  visibility: ${props => props.isopen ? 'visible' : 'hidden'};
+  transform: translateY(${props => props.isopen ? '0' : '-10px'});
   transition: all 0.2s ease-out;
   z-index: 50;
 `;
@@ -90,14 +90,14 @@ const DropdownDescription = styled.p`
   margin: 0;
 `;
 
-const ChevronIcon = styled.span<{ isOpen: boolean }>`
+const ChevronIcon = styled.span<{ isopen: boolean }>`
   display: inline-block;
   width: 0;
   height: 0;
   border-left: 4px solid transparent;
   border-right: 4px solid transparent;
   border-top: 4px solid currentColor;
-  transform: ${props => props.isOpen ? 'rotate(180deg)' : 'none'};
+  transform: ${props => props.isopen ? 'rotate(180deg)' : 'none'};
   transition: transform 0.2s;
 `;
 
@@ -121,9 +121,9 @@ export function NavMenu() {
         >
           <NavButton>
             Overview
-            <ChevronIcon isOpen={openMenu === 'overview'} />
+            <ChevronIcon isopen={openMenu === 'overview'} />
           </NavButton>
-          <Dropdown isOpen={openMenu === 'overview'}>
+          <Dropdown isopen={openMenu === 'overview' ? true : undefined}>
             <DropdownList>
               <DropdownItem>
                 <DropdownLink href="#">
@@ -143,9 +143,9 @@ export function NavMenu() {
         >
           <NavButton>
             Reports
-            <ChevronIcon isOpen={openMenu === 'reports'} />
+            <ChevronIcon isopen={openMenu === 'reports'} />
           </NavButton>
-          <Dropdown isOpen={openMenu === 'reports'}>
+          <Dropdown isopen={openMenu === 'reports'}>
             <DropdownList>
               <DropdownItem>
                 <DropdownLink href="#">
@@ -173,9 +173,9 @@ export function NavMenu() {
         >
           <NavButton>
             Data
-            <ChevronIcon isOpen={openMenu === 'data'} />
+            <ChevronIcon isopen={openMenu === 'data'} />
           </NavButton>
-          <Dropdown isOpen={openMenu === 'data'}>
+          <Dropdown isopen={openMenu === 'data'}>
             <DropdownList>
               <DropdownItem>
                 <DropdownLink href="/data-management">
